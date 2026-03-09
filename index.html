@@ -543,7 +543,7 @@ const PARTY_MAP = {
 };
 
 const EC_URL = 'https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
-const API_URL = 'http://localhost:3001/pr-votes';
+const API_URL = '/.netlify/functions/pr-votes';
 
 async function fetchLive() {
   setNotice('⏳', 'Fetching from Election Commission…', '#8ab4d0');
