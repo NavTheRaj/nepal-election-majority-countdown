@@ -542,7 +542,16 @@ const PARTY_MAP = {
   'राष्ट्रिय प्रजातन्त्र पार्टी':                               'RPP',
 };
 
-const EC_URL = 'https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
+const FPTP_MAP = {
+  'राष्ट्रिय स्वतन्त्र पार्टी':                                  'RSP',
+  'नेपाली काँग्रेस':                                              'NC',
+  'नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)':    'UML',
+  'नेपाली कम्युनिष्ट पार्टी':                                    'NCP',
+  'श्रम संस्कृति पार्टी':                                        'Labor',
+  'राष्ट्रिय प्रजातन्त्र पार्टी':                               'RPP',
+  'स्वतन्त्र':                                                    'Ind',
+};
+
 const API_URL = '/.netlify/functions/pr-votes';
 
 async function fetchLive() {
@@ -551,17 +560,27 @@ async function fetchLive() {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    console.log('RAW RESPONSE:', text.substring(0, 300));
-    if (!text || text.trim() === '') throw new Error('Empty response from server');
-    if (text.trim()[0] !== '[' && text.trim()[0] !== '{') throw new Error('Not JSON — got: ' + text.substring(0, 100));
-    const data = JSON.parse(text);
-    data.forEach(p => {
+    if (!text || text.trim()[0] !== '{') throw new Error('Not JSON — got: ' + text.substring(0, 100));
+    const payload = JSON.parse(text);
+
+    // PR votes
+    const idMap = { RSP:'in-rsp-pr', NC:'in-nc-pr', UML:'in-uml-pr', NCP:'in-ncp-pr', Labor:'in-labor-pr', RPP:'in-rpp-pr' };
+    (payload.pr || []).forEach(p => {
       const key = PARTY_MAP[p.PoliticalPartyName];
-      const idMap = { RSP:'in-rsp-pr', NC:'in-nc-pr', UML:'in-uml-pr', NCP:'in-ncp-pr', Labor:'in-labor-pr', RPP:'in-rpp-pr' };
       if (key && idMap[key]) document.getElementById(idMap[key]).value = p.TotalVoteReceived;
     });
+
+    // FPTP seats — auto-populate RSP FPTP input
+    const fptpSeats = {};
+    (payload.fptp || []).forEach(p => {
+      const key = FPTP_MAP[p.PoliticalPartyName];
+      if (key) fptpSeats[key] = (p.TotalSeatWon || 0);
+    });
+    if (fptpSeats['RSP'] !== undefined) document.getElementById('in-rsp-fptp').value = fptpSeats['RSP'];
+
+    const fptpSummary = Object.entries(fptpSeats).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(' · ');
     const now = new Date().toLocaleTimeString();
-    setNotice('✅', `Live data from EC — last fetched ${now}. Auto-refreshes every 60s.`, '#6ed986');
+    setNotice('✅', `Live EC data — ${now} &nbsp;|&nbsp; FPTP so far: ${fptpSummary || 'loading…'}`, '#6ed986');
     recalculate();
   } catch(e) {
     setNotice('❌', `Fetch failed (${e.message}) — showing last known data. Will retry in 60s.`, '#ff6b6b');
