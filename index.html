@@ -542,12 +542,12 @@ const PARTY_MAP = {
   'राष्ट्रिय प्रजातन्त्र पार्टी':                               'RPP',
 };
 
-const API_URL = 'https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
+const API_URL = 'https://corsproxy.io/?url=https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
 
 async function fetchLive() {
   setNotice('⏳', 'Fetching from Election Commission…', '#8ab4d0');
   try {
-    const res = await fetch(API_URL, { headers: { 'Referer': 'https://result.election.gov.np/PRVoteChartResult2082.aspx' } });
+    const res = await fetch(API_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     data.forEach(p => {
