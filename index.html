@@ -319,48 +319,52 @@
   </header>
 
   <!-- DATA NOTICE -->
-  <div class="data-notice">
-    ⚡ <span>Paste latest EC data below to recalculate everything instantly. Default data: <strong>10,170,821</strong> PR votes counted &nbsp;|&nbsp; <strong>164/165</strong> FPTP seats declared.</span>
+  <div class="data-notice" id="data-notice">
+    ⏳ <span id="notice-text"><strong style="color:#8ab4d0">⏳</strong> Fetching live data from Election Commission…</span>
   </div>
 
   <!-- ── UPDATE PANEL ── -->
   <div class="update-panel">
-    <h3>🔄 Update with Latest EC Data</h3>
+    <h3>⚙️ Override / Manual Inputs</h3>
     <div class="input-grid">
       <div class="input-group">
         <label>RSP PR Votes</label>
-        <input type="number" id="in-rsp-pr" value="4887153" placeholder="e.g. 4887153">
+        <input type="number" id="in-rsp-pr" value="4887153">
       </div>
       <div class="input-group">
         <label>NC PR Votes</label>
-        <input type="number" id="in-nc-pr" value="1652266" placeholder="e.g. 1652266">
+        <input type="number" id="in-nc-pr" value="1652266">
       </div>
       <div class="input-group">
         <label>UML PR Votes</label>
-        <input type="number" id="in-uml-pr" value="1375602" placeholder="e.g. 1375602">
+        <input type="number" id="in-uml-pr" value="1375602">
       </div>
       <div class="input-group">
         <label>NCP PR Votes</label>
-        <input type="number" id="in-ncp-pr" value="744876" placeholder="e.g. 744876">
+        <input type="number" id="in-ncp-pr" value="744876">
       </div>
       <div class="input-group">
         <label>Labor PR Votes</label>
-        <input type="number" id="in-labor-pr" value="344553" placeholder="e.g. 344553">
+        <input type="number" id="in-labor-pr" value="344553">
       </div>
       <div class="input-group">
         <label>RPP PR Votes</label>
-        <input type="number" id="in-rpp-pr" value="320397" placeholder="e.g. 320397">
+        <input type="number" id="in-rpp-pr" value="320397">
       </div>
       <div class="input-group">
         <label>RSP FPTP Seats</label>
-        <input type="number" id="in-rsp-fptp" value="125" placeholder="e.g. 125">
+        <input type="number" id="in-rsp-fptp" value="125">
       </div>
       <div class="input-group">
         <label>Estimated Total PR Votes</label>
-        <input type="number" id="in-total-est" value="11300000" placeholder="e.g. 11300000">
+        <input type="number" id="in-total-est" value="11300000">
       </div>
     </div>
-    <button class="update-btn" onclick="recalculate()">RECALCULATE DASHBOARD</button>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button class="update-btn" onclick="fetchLive()">🔄 FETCH LIVE NOW</button>
+      <button class="update-btn" style="background:linear-gradient(90deg,#0d7a9e,#0059b3)" onclick="recalculate()">MANUAL RECALCULATE</button>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">Next auto-fetch in <span id="countdown">60</span>s</span>
+    </div>
   </div>
 
   <!-- ── SECTION: RSP MAJORITY STATUS ── -->
@@ -528,6 +532,54 @@
 </div>
 
 <script>
+// ── Party key mapping from Nepali party names ──
+const PARTY_MAP = {
+  'राष्ट्रिय स्वतन्त्र पार्टी':                                  'RSP',
+  'नेपाली काँग्रेस':                                              'NC',
+  'नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)':    'UML',
+  'नेपाली कम्युनिष्ट पार्टी':                                    'NCP',
+  'श्रम संस्कृति पार्टी':                                        'Labor',
+  'राष्ट्रिय प्रजातन्त्र पार्टी':                               'RPP',
+};
+
+const API_URL = 'https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
+
+async function fetchLive() {
+  setNotice('⏳', 'Fetching from Election Commission…', '#8ab4d0');
+  try {
+    const res = await fetch(API_URL, { headers: { 'Referer': 'https://result.election.gov.np/PRVoteChartResult2082.aspx' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    data.forEach(p => {
+      const key = PARTY_MAP[p.PoliticalPartyName];
+      const idMap = { RSP:'in-rsp-pr', NC:'in-nc-pr', UML:'in-uml-pr', NCP:'in-ncp-pr', Labor:'in-labor-pr', RPP:'in-rpp-pr' };
+      if (key && idMap[key]) document.getElementById(idMap[key]).value = p.TotalVoteReceived;
+    });
+    const now = new Date().toLocaleTimeString();
+    setNotice('✅', `Live data from EC — last fetched ${now}. Auto-refreshes every 60s.`, '#6ed986');
+    recalculate();
+  } catch(e) {
+    setNotice('❌', `Fetch failed (${e.message}) — showing last known data. Will retry in 60s.`, '#ff6b6b');
+  }
+  resetCountdown();
+}
+
+function setNotice(icon, msg, color) {
+  document.getElementById('notice-text').innerHTML = `<strong style="color:${color}">${icon}</strong> ${msg}`;
+}
+
+let countdownVal = 60, countdownTimer = null;
+function resetCountdown() {
+  clearInterval(countdownTimer);
+  countdownVal = 60;
+  document.getElementById('countdown').textContent = 60;
+  countdownTimer = setInterval(() => {
+    countdownVal--;
+    document.getElementById('countdown').textContent = countdownVal;
+    if (countdownVal <= 0) fetchLive();
+  }, 1000);
+}
+
 // ── Sainte-Laguë allocator ──
 function sainteLague(votes, seats) {
   const alloc = {};
@@ -725,8 +777,8 @@ function recalculate(){
   });
 }
 
-// init on load
-recalculate();
+// ── Boot: fetch live immediately, start 60s polling ──
+window.addEventListener('DOMContentLoaded', () => { fetchLive(); });
 </script>
 </body>
 </html>
