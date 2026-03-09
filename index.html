@@ -97,19 +97,36 @@
   .pr-stat .ps-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--rsp);line-height:1;}
   .pr-stat .ps-label{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
   .pr-stat .ps-sub{font-size:11px;color:var(--muted);margin-top:3px;}
-  .party-table{width:100%;border-collapse:collapse;font-size:13px;}
+  /* party table — desktop */
+  .party-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;}
+  .party-table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;}
   .party-table th{text-align:left;padding:8px 10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);font-weight:400;}
   .party-table td{padding:10px 10px;border-bottom:1px solid var(--border);}
   .party-table tr:last-child td{border-bottom:none;}
   .party-table tr:hover td{background:var(--table-hover);}
   .party-name-cell{display:flex;align-items:center;gap:8px;}
   .party-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-  .bar-cell{width:120px;}
+  .bar-cell{width:90px;}
   .mini-bar-track{background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;border:1px solid var(--border);}
   .mini-bar-fill{height:100%;border-radius:3px;}
   .threshold-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:1px;padding:2px 7px;border-radius:3px;font-weight:500;}
   .threshold-status.pass{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2);}
   .threshold-status.warn{background:rgba(255,171,0,.1);color:var(--warn);border:1px solid rgba(255,171,0,.2);}
+  /* party cards — mobile */
+  .party-cards{display:none;flex-direction:column;gap:10px;padding:14px;}
+  .party-card{border-radius:8px;border:1px solid var(--border);background:var(--surface2);overflow:hidden;}
+  .party-card-top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
+  .party-card-name{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;}
+  .party-card-bar{height:4px;width:100%;background:var(--border);}
+  .party-card-bar-fill{height:100%;}
+  .party-card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);}
+  .party-card-stat{background:var(--surface);padding:8px 6px;text-align:center;}
+  .pcs-val{font-family:'Bebas Neue',sans-serif;font-size:18px;line-height:1;}
+  .pcs-lbl{font-size:8px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;margin-top:2px;}
+  @media(max-width:580px){
+    .party-table-wrap{display:none;}
+    .party-cards{display:flex;}
+  }
   .estimator-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px 24px;margin-bottom:28px;transition:background .3s;}
   .estimator-card h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin-bottom:18px;}
   .est-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
@@ -323,19 +340,22 @@
 
   <div class="section-label"><span class="ne">सबै योग्य दल — PR समानुपातिक</span><span class="en">All Qualifying Parties — PR Samanupatik</span></div>
   <div class="card" style="margin-bottom:28px;padding:0;">
-    <table class="party-table">
-      <thead><tr>
-        <th><span class="ne">दल</span><span class="en">Party</span></th>
-        <th><span class="ne">PR मत</span><span class="en">PR Votes</span></th>
-        <th>%</th>
-        <th><span class="ne">बार</span><span class="en">Bar</span></th>
-        <th><span class="ne">PR सिट</span><span class="en">PR Seats</span></th>
-        <th>FPTP</th>
-        <th><span class="ne">कुल</span><span class="en">Total</span></th>
-        <th><span class="ne">थ्रेसहोल्ड</span><span class="en">Threshold</span></th>
-      </tr></thead>
-      <tbody id="party-tbody"></tbody>
-    </table>
+    <div class="party-table-wrap">
+      <table class="party-table">
+        <thead><tr>
+          <th><span class="ne">दल</span><span class="en">Party</span></th>
+          <th><span class="ne">PR मत</span><span class="en">PR Votes</span></th>
+          <th>%</th>
+          <th><span class="ne">बार</span><span class="en">Bar</span></th>
+          <th><span class="ne">PR</span><span class="en">PR</span></th>
+          <th>FPTP</th>
+          <th><span class="ne">कुल</span><span class="en">Total</span></th>
+          <th><span class="ne">✓</span><span class="en">✓</span></th>
+        </tr></thead>
+        <tbody id="party-tbody"></tbody>
+      </table>
+    </div>
+    <div class="party-cards" id="party-cards"></div>
   </div>
 
   <footer>
@@ -521,11 +541,13 @@ function recalculate(){
     :'<span class="ne">🔴 अर्को सिट नपुग्न सक्छ</span><span class="en">🔴 May not reach next seat threshold</span>';
 
   const tbody=document.getElementById('party-tbody');tbody.innerHTML='';
+  const cardsEl=document.getElementById('party-cards');cardsEl.innerHTML='';
   const maxV=Math.max(...Object.values(v));
   Object.entries(v).sort((a,b)=>b[1]-a[1]).forEach(([k,val])=>{
     const pctV=(val/totalPR*100).toFixed(2), color=COLORS[k]||'#888';
     const seats=prSeats[k]||0, fptp=FPTP_BASE[k]||0, tot=seats+fptp;
     const pass=val>=threshold, barW=(val/maxV*100).toFixed(1);
+    // Desktop table row
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><div class="party-name-cell"><span class="party-dot" style="background:${color}"></span><span class="ne">${PNE[k]||k}</span><span class="en">${PEN[k]||k}</span></div></td>
       <td style="font-family:'DM Mono',monospace">${fmtNum(val)}</td>
@@ -536,6 +558,26 @@ function recalculate(){
       <td style="font-weight:700">${tot}</td>
       <td><span class="threshold-status ${pass?'pass':'warn'}">${pass?'<span class="ne">✓ योग्य</span><span class="en">✓ PASS</span>':'<span class="ne">⚠ जोखिम</span><span class="en">⚠ RISK</span>'}</span></td>`;
     tbody.appendChild(tr);
+    // Mobile card
+    const card=document.createElement('div');
+    card.className='party-card';
+    card.innerHTML=`
+      <div class="party-card-top">
+        <div class="party-card-name">
+          <span class="party-dot" style="background:${color};width:10px;height:10px;"></span>
+          <span class="ne">${PNE[k]||k}</span><span class="en">${PEN[k]||k}</span>
+        </div>
+        <span class="threshold-status ${pass?'pass':'warn'}">${pass?'<span class="ne">✓ योग्य</span><span class="en">✓ PASS</span>':'<span class="ne">⚠ जोखिम</span><span class="en">⚠ RISK</span>'}</span>
+      </div>
+      <div class="party-card-bar"><div class="party-card-bar-fill" style="width:${barW}%;background:${color}"></div></div>
+      <div class="party-card-grid">
+        <div class="party-card-stat"><div class="pcs-val" style="color:${color}">${fmtNum(val)}</div><div class="pcs-lbl"><span class="ne">PR मत</span><span class="en">PR Votes</span></div></div>
+        <div class="party-card-stat"><div class="pcs-val" style="color:${color}">${pctV}%</div><div class="pcs-lbl"><span class="ne">हिस्सा</span><span class="en">Share</span></div></div>
+        <div class="party-card-stat"><div class="pcs-val" style="color:${color}">${seats}</div><div class="pcs-lbl"><span class="ne">PR सिट</span><span class="en">PR Seats</span></div></div>
+        <div class="party-card-stat"><div class="pcs-val" style="color:var(--muted)">${fptp}</div><div class="pcs-lbl">FPTP</div></div>
+        <div class="party-card-stat"><div class="pcs-val" style="font-weight:700">${tot}</div><div class="pcs-lbl"><span class="ne">कुल</span><span class="en">Total</span></div></div>
+      </div>`;
+    cardsEl.appendChild(card);
   });
   applyLang(currentLang);
 }
