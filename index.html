@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nepal Election 2082 — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #060a10;
+    --surface:  #0d1420;
+    --border:   #1a2535;
+    --accent:   #00c2ff;
+    --rsp:      #ff4d00;
+    --green:    #00e676;
+    --warn:     #ffab00;
+    --danger:   #ff1744;
+    --text:     #e8edf5;
+    --muted:    #5a6a80;
+    --glow-r:   rgba(255,77,0,0.35);
+    --glow-a:   rgba(0,194,255,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── grid noise overlay ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(0,194,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,194,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .page { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:24px 20px 60px; }
+
+  /* ── header ── */
+  header {
+    display:flex; align-items:flex-end; justify-content:space-between;
+    border-bottom:1px solid var(--border); padding-bottom:18px; margin-bottom:28px;
+    flex-wrap:wrap; gap:12px;
+  }
+  .logo-block h1 {
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(28px,5vw,52px); letter-spacing:2px;
+    color:#fff; line-height:1;
+  }
+  .logo-block h1 span { color:var(--rsp); }
+  .logo-block p { font-size:12px; color:var(--muted); letter-spacing:3px; text-transform:uppercase; margin-top:4px; }
+  .live-pill {
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,77,0,.12); border:1px solid rgba(255,77,0,.3);
+    border-radius:4px; padding:6px 14px; font-size:12px; font-weight:600;
+    color:var(--rsp); letter-spacing:2px; text-transform:uppercase;
+  }
+  .live-pill .dot {
+    width:7px; height:7px; border-radius:50%; background:var(--rsp);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* ── data notice ── */
+  .data-notice {
+    background:rgba(0,194,255,.06); border:1px solid rgba(0,194,255,.18);
+    border-radius:8px; padding:14px 18px; margin-bottom:28px;
+    font-size:13px; color:#8ab4d0; display:flex; align-items:center; gap:10px;
+  }
+  .data-notice strong { color:var(--accent); }
+
+  /* ── section title ── */
+  .section-label {
+    font-size:10px; letter-spacing:4px; text-transform:uppercase;
+    color:var(--muted); font-family:'DM Mono', monospace;
+    margin-bottom:14px; display:flex; align-items:center; gap:10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── HERO CARDS (RSP majority status) ── */
+  .hero-grid {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:14px; margin-bottom:28px;
+  }
+  @media(max-width:700px){ .hero-grid{ grid-template-columns:1fr 1fr; } }
+  @media(max-width:420px){ .hero-grid{ grid-template-columns:1fr; } }
+
+  .hero-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:22px 20px; position:relative; overflow:hidden;
+    transition: border-color .2s;
+  }
+  .hero-card:hover { border-color: rgba(255,77,0,.4); }
+  .hero-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  }
+  .hero-card.rsp::before  { background: linear-gradient(90deg, var(--rsp), #ff8c00); }
+  .hero-card.blue::before { background: linear-gradient(90deg, var(--accent), #0080ff); }
+  .hero-card.green::before{ background: linear-gradient(90deg, var(--green), #00bfa5); }
+  .hero-card.warn::before { background: linear-gradient(90deg, var(--warn), #ff8f00); }
+
+  .hero-card .card-label {
+    font-size:10px; letter-spacing:3px; text-transform:uppercase;
+    color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:10px;
+  }
+  .hero-card .big-num {
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(36px,6vw,64px); line-height:1; color:#fff;
+  }
+  .hero-card .big-num.rsp-col { color:var(--rsp); }
+  .hero-card .big-num.green-col { color:var(--green); }
+  .hero-card .big-num.warn-col  { color:var(--warn); }
+  .hero-card .sub {
+    font-size:12px; color:var(--muted); margin-top:6px; line-height:1.5;
+  }
+  .hero-card .sub strong { color:var(--text); }
+
+  .glow-rsp { box-shadow: 0 0 40px var(--glow-r); }
+  .glow-blue{ box-shadow: 0 0 30px var(--glow-a); }
+
+  /* ── SUPERMAJORITY PROGRESS ── */
+  .super-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:24px 24px 20px; margin-bottom:28px;
+  }
+  .super-header {
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:18px; flex-wrap:wrap; gap:8px;
+  }
+  .super-header h2 {
+    font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:1px;
+  }
+  .super-header .threshold-label {
+    font-family:'DM Mono',monospace; font-size:11px; color:var(--muted);
+  }
+
+  .progress-track {
+    position:relative; height:36px; background:#0a1220;
+    border-radius:6px; overflow:visible; margin-bottom:10px;
+    border:1px solid var(--border);
+  }
+  .progress-fill {
+    height:100%; border-radius:6px 0 0 6px;
+    background: linear-gradient(90deg, #c0330c, var(--rsp));
+    transition: width 1s ease;
+    position:relative;
+  }
+  .progress-fill::after {
+    content:'';
+    position:absolute; right:0; top:-3px; bottom:-3px; width:3px;
+    background:#fff; border-radius:2px; opacity:.7;
+  }
+
+  /* threshold markers */
+  .marker {
+    position:absolute; top:-22px; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; pointer-events:none;
+  }
+  .marker .marker-label {
+    font-size:9px; font-family:'DM Mono',monospace; letter-spacing:1px;
+    white-space:nowrap; padding:2px 6px; border-radius:3px;
+  }
+  .marker .marker-line {
+    width:1px; height:62px; margin-top:2px;
+  }
+  .marker.simple .marker-label { background:rgba(0,230,118,.15); color:var(--green); }
+  .marker.simple .marker-line   { background:rgba(0,230,118,.5); }
+  .marker.super  .marker-label { background:rgba(255,171,0,.15); color:var(--warn); }
+  .marker.super  .marker-line   { background:rgba(255,171,0,.5); }
+
+  .progress-info {
+    display:flex; justify-content:space-between; font-size:12px; color:var(--muted);
+    font-family:'DM Mono',monospace;
+  }
+  .progress-info span strong { color:var(--text); }
+
+  /* ── RSP SEAT BREAKDOWN TABLE ── */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px; }
+  @media(max-width:700px){ .two-col{ grid-template-columns:1fr; } }
+
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:20px;
+  }
+  .card h3 {
+    font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1px;
+    margin-bottom:16px; color:#fff;
+  }
+
+  .seat-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;
+  }
+  .seat-row:last-child { border-bottom:none; }
+  .seat-row .label { color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:1px; }
+  .seat-row .val   { font-weight:600; font-size:15px; }
+  .seat-row .val.rsp-col   { color:var(--rsp); }
+  .seat-row .val.green-col { color:var(--green); }
+  .seat-row .val.warn-col  { color:var(--warn); }
+  .seat-row .val.danger-col{ color:var(--danger); }
+
+  /* ── PR VOTE REQUIRED ── */
+  .pr-required {
+    background: linear-gradient(135deg, rgba(255,77,0,.08), rgba(255,140,0,.05));
+    border:1px solid rgba(255,77,0,.25); border-radius:10px;
+    padding:22px 24px; margin-bottom:28px;
+  }
+  .pr-required h3 {
+    font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; margin-bottom:16px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .pr-required h3 .badge {
+    font-size:10px; font-family:'DM Mono',monospace; letter-spacing:2px;
+    background:rgba(255,77,0,.2); color:var(--rsp); padding:3px 8px; border-radius:3px;
+  }
+  .pr-stat-row {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px;
+  }
+  .pr-stat { text-align:center; padding:14px; background:rgba(0,0,0,.3); border-radius:8px; }
+  .pr-stat .ps-num {
+    font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--rsp); line-height:1;
+  }
+  .pr-stat .ps-label { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+  .pr-stat .ps-sub   { font-size:11px; color:#6a8aaa; margin-top:3px; }
+
+  /* ── PARTY TABLE ── */
+  .party-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .party-table th {
+    text-align:left; padding:8px 10px; font-size:10px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--muted); font-family:'DM Mono',monospace;
+    border-bottom:1px solid var(--border); font-weight:400;
+  }
+  .party-table td { padding:10px 10px; border-bottom:1px solid rgba(26,37,53,.6); }
+  .party-table tr:last-child td { border-bottom:none; }
+  .party-table tr:hover td { background:rgba(255,255,255,.02); }
+
+  .party-name-cell { display:flex; align-items:center; gap:8px; }
+  .party-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  .bar-cell { width:120px; }
+  .mini-bar-track { background:#0a1220; border-radius:3px; height:6px; overflow:hidden; }
+  .mini-bar-fill   { height:100%; border-radius:3px; }
+
+  .threshold-status {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:10px; font-family:'DM Mono',monospace; letter-spacing:1px;
+    padding:2px 7px; border-radius:3px; font-weight:500;
+  }
+  .threshold-status.pass { background:rgba(0,230,118,.1); color:var(--green); border:1px solid rgba(0,230,118,.2); }
+  .threshold-status.warn { background:rgba(255,171,0,.1); color:var(--warn); border:1px solid rgba(255,171,0,.2); }
+
+  /* ── REMAINING VOTES ESTIMATOR ── */
+  .estimator-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:22px 24px; margin-bottom:28px;
+  }
+  .estimator-card h3 { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; margin-bottom:18px; }
+
+  .est-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+  .est-item { padding:14px; background:#08101a; border-radius:8px; border:1px solid var(--border); }
+  .est-item .ei-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .est-item .ei-val   { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; }
+  .est-item .ei-sub   { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* ── UPDATE INPUT ── */
+  .update-panel {
+    background:var(--surface); border:1px solid rgba(0,194,255,.15);
+    border-radius:10px; padding:22px 24px; margin-bottom:28px;
+  }
+  .update-panel h3 {
+    font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1px;
+    margin-bottom:16px; color:var(--accent);
+  }
+  .input-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:16px; }
+  .input-group label {
+    display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:6px;
+  }
+  .input-group input {
+    width:100%; background:#08101a; border:1px solid var(--border);
+    color:var(--text); border-radius:6px; padding:9px 12px; font-size:14px;
+    font-family:'DM Mono',monospace; outline:none; transition:border-color .2s;
+  }
+  .input-group input:focus { border-color:var(--accent); }
+  .update-btn {
+    background: linear-gradient(90deg, var(--rsp), #ff8c00);
+    border:none; color:#fff; font-family:'Bebas Neue',sans-serif;
+    font-size:16px; letter-spacing:2px; padding:11px 28px;
+    border-radius:6px; cursor:pointer; transition: opacity .2s;
+  }
+  .update-btn:hover { opacity:.85; }
+
+  /* ── footer ── */
+  footer { text-align:center; font-size:11px; color:var(--muted); margin-top:40px; font-family:'DM Mono',monospace; }
+
+  /* ── animated counter ── */
+  @keyframes countUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  .animate-in { animation: countUp .4s ease forwards; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <h1>Nepal <span>Election</span> 2082</h1>
+      <p>House of Representatives — Live Results Dashboard</p>
+    </div>
+    <div class="live-pill"><span class="dot"></span>Live Counting</div>
+  </header>
+
+  <!-- DATA NOTICE -->
+  <div class="data-notice">
+    ⚡ <span>Paste latest EC data below to recalculate everything instantly. Default data: <strong>10,170,821</strong> PR votes counted &nbsp;|&nbsp; <strong>164/165</strong> FPTP seats declared.</span>
+  </div>
+
+  <!-- ── UPDATE PANEL ── -->
+  <div class="update-panel">
+    <h3>🔄 Update with Latest EC Data</h3>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>RSP PR Votes</label>
+        <input type="number" id="in-rsp-pr" value="4887153" placeholder="e.g. 4887153">
+      </div>
+      <div class="input-group">
+        <label>NC PR Votes</label>
+        <input type="number" id="in-nc-pr" value="1652266" placeholder="e.g. 1652266">
+      </div>
+      <div class="input-group">
+        <label>UML PR Votes</label>
+        <input type="number" id="in-uml-pr" value="1375602" placeholder="e.g. 1375602">
+      </div>
+      <div class="input-group">
+        <label>NCP PR Votes</label>
+        <input type="number" id="in-ncp-pr" value="744876" placeholder="e.g. 744876">
+      </div>
+      <div class="input-group">
+        <label>Labor PR Votes</label>
+        <input type="number" id="in-labor-pr" value="344553" placeholder="e.g. 344553">
+      </div>
+      <div class="input-group">
+        <label>RPP PR Votes</label>
+        <input type="number" id="in-rpp-pr" value="320397" placeholder="e.g. 320397">
+      </div>
+      <div class="input-group">
+        <label>RSP FPTP Seats</label>
+        <input type="number" id="in-rsp-fptp" value="125" placeholder="e.g. 125">
+      </div>
+      <div class="input-group">
+        <label>Estimated Total PR Votes</label>
+        <input type="number" id="in-total-est" value="11300000" placeholder="e.g. 11300000">
+      </div>
+    </div>
+    <button class="update-btn" onclick="recalculate()">RECALCULATE DASHBOARD</button>
+  </div>
+
+  <!-- ── SECTION: RSP MAJORITY STATUS ── -->
+  <div class="section-label">RSP Majority Status</div>
+  <div class="hero-grid">
+    <div class="hero-card rsp glow-rsp">
+      <div class="card-label">RSP Total Seats</div>
+      <div class="big-num rsp-col" id="rsp-total">183</div>
+      <div class="sub">FPTP <strong id="rsp-fptp-disp">125</strong> + PR <strong id="rsp-pr-disp">58</strong></div>
+    </div>
+    <div class="hero-card green">
+      <div class="card-label">Simple Majority (138)</div>
+      <div class="big-num green-col" id="surplus-simple">+45</div>
+      <div class="sub">Seats above threshold &nbsp;<strong>✅ SECURED</strong></div>
+    </div>
+    <div class="hero-card warn">
+      <div class="card-label">Supermajority (184)</div>
+      <div class="big-num warn-col" id="gap-super">-1</div>
+      <div class="sub" id="super-status">1 seat short of unilateral constitutional amendment</div>
+    </div>
+  </div>
+
+  <!-- ── SUPERMAJORITY PROGRESS BAR ── -->
+  <div class="super-card">
+    <div class="super-header">
+      <h2>RSP Seat Progress — 275 Total Seats</h2>
+      <div class="threshold-label" id="pct-label">183 / 275 &nbsp;=&nbsp; 66.5%</div>
+    </div>
+    <div class="progress-track" id="progress-track">
+      <!-- markers injected by JS -->
+      <div class="progress-fill" id="progress-fill" style="width:66.5%"></div>
+    </div>
+    <div class="progress-info">
+      <span>0</span>
+      <span>Simple majority <strong>138 (50.2%)</strong></span>
+      <span>Supermajority <strong>184 (66.9%)</strong></span>
+      <span>275</span>
+    </div>
+  </div>
+
+  <!-- ── PR VOTE CALCULATOR ── -->
+  <div class="pr-required">
+    <h3>Proportionate (PR) Seat Calculus <span class="badge">Sainte-Laguë</span></h3>
+    <div class="pr-stat-row">
+      <div class="pr-stat">
+        <div class="ps-num" id="pr-current-seats">58</div>
+        <div class="ps-label">Current PR Seats</div>
+        <div class="ps-sub">out of 110</div>
+      </div>
+      <div class="pr-stat">
+        <div class="ps-num" id="pr-votes-for-next" style="font-size:22px">239,347</div>
+        <div class="ps-label">PR Votes for +1 More Seat</div>
+        <div class="ps-sub" id="next-seat-note">to reach 59 PR seats</div>
+      </div>
+      <div class="pr-stat">
+        <div class="ps-num" id="pr-total-counted">10.17M</div>
+        <div class="ps-label">Total PR Votes Counted</div>
+        <div class="ps-sub" id="pr-turnout-pct">~90% of estimated</div>
+      </div>
+      <div class="pr-stat">
+        <div class="ps-num" id="pr-remaining" style="color:var(--accent)">1.13M</div>
+        <div class="ps-label">Estimated Remaining</div>
+        <div class="ps-sub" id="rsp-expected-share">RSP ~48% share expected</div>
+      </div>
+      <div class="pr-stat">
+        <div class="ps-num" id="pr-rsp-expected" style="color:var(--warn)">~543K</div>
+        <div class="ps-label">Expected RSP Remaining</div>
+        <div class="ps-sub" id="pr-verdict">⚡ Likely gets +1 seat</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TWO COL: SEAT BREAKDOWN + THRESHOLDS ── -->
+  <div class="two-col">
+    <div class="card">
+      <h3>RSP Seat Breakdown</h3>
+      <div class="seat-row"><span class="label">FPTP Won</span><span class="val rsp-col" id="b-fptp">125</span></div>
+      <div class="seat-row"><span class="label">PR Seats</span><span class="val rsp-col" id="b-pr">58</span></div>
+      <div class="seat-row"><span class="label">Total Seats</span><span class="val rsp-col" id="b-total">183</span></div>
+      <div class="seat-row"><span class="label">% of House (275)</span><span class="val" id="b-pct">66.5%</span></div>
+      <div class="seat-row"><span class="label">Surplus over simple majority</span><span class="val green-col" id="b-surplus">+45</span></div>
+      <div class="seat-row"><span class="label">Deficit to supermajority (184)</span><span class="val warn-col" id="b-deficit">-1</span></div>
+    </div>
+    <div class="card">
+      <h3>Constitutional Thresholds</h3>
+      <div class="seat-row">
+        <span class="label">Form Govt (138 — 50.2%)</span>
+        <span class="val green-col">✅ +<span id="t-govt">45</span></span>
+      </div>
+      <div class="seat-row">
+        <span class="label">Two-thirds / Const. Amend (184 — 66.9%)</span>
+        <span class="val" id="t-super-cell">⚠️ <span id="t-super">-1</span></span>
+      </div>
+      <div class="seat-row">
+        <span class="label">Three-quarters / Fund. Rights (207 — 75.3%)</span>
+        <span class="val danger-col">❌ <span id="t-tq">-24</span></span>
+      </div>
+      <div class="seat-row">
+        <span class="label">1 undeclared seat (UML leading)</span>
+        <span class="val" style="color:var(--muted);font-size:12px">Won't help RSP</span>
+      </div>
+      <div class="seat-row">
+        <span class="label">Final FPTP seats declared</span>
+        <span class="val" id="t-fptp-declared">164 / 165</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REMAINING VOTES ── -->
+  <div class="section-label">Vote Count Estimator</div>
+  <div class="estimator-card">
+    <h3>Remaining Votes Analysis</h3>
+    <div class="est-grid">
+      <div class="est-item">
+        <div class="ei-label">Counted PR Votes</div>
+        <div class="ei-val" id="e-counted" style="color:var(--rsp)">10.17M</div>
+        <div class="ei-sub" id="e-counted-raw">10,170,821</div>
+      </div>
+      <div class="est-item">
+        <div class="ei-label">Estimated Total</div>
+        <div class="ei-val" id="e-total" style="color:var(--text)">11.3M</div>
+        <div class="ei-sub">Based on ~60% turnout / 18.9M voters</div>
+      </div>
+      <div class="est-item">
+        <div class="ei-label">Remaining (est.)</div>
+        <div class="ei-val" id="e-remaining" style="color:var(--accent)">1.13M</div>
+        <div class="ei-sub" id="e-pct-done">~90.0% counted</div>
+      </div>
+      <div class="est-item">
+        <div class="ei-label">RSP Share (PR)</div>
+        <div class="ei-val" id="e-rsp-pct" style="color:var(--rsp)">48.1%</div>
+        <div class="ei-sub" id="e-rsp-expected-votes">~543K more RSP votes expected</div>
+      </div>
+      <div class="est-item">
+        <div class="ei-label">RSP needs for +1 PR seat</div>
+        <div class="ei-val" id="e-needed" style="color:var(--warn)">239K</div>
+        <div class="ei-sub" id="e-verdict">🟢 Expected votes likely sufficient</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ALL PARTIES TABLE ── -->
+  <div class="section-label">All Qualifying Parties — PR Samanupatik</div>
+  <div class="card" style="margin-bottom:28px; padding:0;">
+    <table class="party-table">
+      <thead>
+        <tr>
+          <th>Party</th>
+          <th>PR Votes</th>
+          <th>%</th>
+          <th>Bar</th>
+          <th>PR Seats</th>
+          <th>FPTP</th>
+          <th>Total</th>
+          <th>Threshold</th>
+        </tr>
+      </thead>
+      <tbody id="party-tbody"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Nepal Election Commission · election.gov.np · Dashboard auto-calculates using Sainte-Laguë method · Built for 2082 (2026) general election
+  </footer>
+</div>
+
+<script>
+// ── Sainte-Laguë allocator ──
+function sainteLague(votes, seats) {
+  const alloc = {};
+  const keys = Object.keys(votes);
+  keys.forEach(k => alloc[k] = 0);
+  const q = [];
+  keys.forEach(k => { if(votes[k]>0) q.push([votes[k]/1, k]); });
+  q.sort((a,b)=>b[0]-a[0]);
+  for (let s=0; s<seats; s++) {
+    const best = q.shift();
+    alloc[best[1]]++;
+    const d = 2*alloc[best[1]]+1;
+    q.push([votes[best[1]]/d, best[1]]);
+    q.sort((a,b)=>b[0]-a[0]);
+  }
+  return alloc;
+}
+
+// ── Find extra votes RSP needs for +1 PR seat ──
+function votesForNextSeat(votes) {
+  const current = sainteLague(votes, 110)['RSP'];
+  let lo=0, hi=10_000_000;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    const test={...votes, RSP: votes['RSP']+mid};
+    sainteLague(test,110)['RSP']>current ? hi=mid : lo=mid+1;
+  }
+  return lo;
+}
+
+const COLORS = {
+  RSP:'#ff4d00', NC:'#1565c0', UML:'#e53935', NCP:'#7b1fa2',
+  Labor:'#00897b', RPP:'#f9a825'
+};
+const PARTY_NAMES = { RSP:'RSP', NC:'Nepali Congress', UML:'CPN-UML', NCP:'NCP (CPN)', Labor:'Labor Culture', RPP:'RPP' };
+const FPTP_BASE = { RSP:125, NC:18, UML:9, NCP:7, Labor:3, RPP:1, Ind:1 };
+
+function fmt(n){ return n>=1e6 ? (n/1e6).toFixed(2)+'M' : n>=1e3 ? (n/1e3).toFixed(0)+'K' : n; }
+function fmtNum(n){ return n.toLocaleString('en-IN'); }
+
+function recalculate(){
+  const votes = {
+    RSP:   +document.getElementById('in-rsp-pr').value   || 4887153,
+    NC:    +document.getElementById('in-nc-pr').value    || 1652266,
+    UML:   +document.getElementById('in-uml-pr').value   || 1375602,
+    NCP:   +document.getElementById('in-ncp-pr').value   || 744876,
+    Labor: +document.getElementById('in-labor-pr').value || 344553,
+    RPP:   +document.getElementById('in-rpp-pr').value   || 320397,
+  };
+  const rspFPTP   = +document.getElementById('in-rsp-fptp').value || 125;
+  const totalEst  = +document.getElementById('in-total-est').value || 11300000;
+
+  const totalPR = Object.values(votes).reduce((a,b)=>a+b,0);
+  const threshold = totalPR * 0.03;
+
+  // Filter qualifying
+  const qualifying = {};
+  Object.entries(votes).forEach(([k,v])=>{ if(v>=threshold) qualifying[k]=v; });
+
+  // PR seat allocation
+  const prSeats = sainteLague(qualifying, 110);
+  Object.keys(votes).forEach(k=>{ if(!prSeats[k]) prSeats[k]=0; });
+
+  // RSP totals
+  const rspPR    = prSeats['RSP'] || 0;
+  const rspTotal = rspFPTP + rspPR;
+  const HOUSE    = 275;
+  const pct      = (rspTotal/HOUSE*100).toFixed(1);
+  const surplusSimple = rspTotal - 138;
+  const gapSuper      = rspTotal - 184;
+  const gapTQ         = rspTotal - 207;
+
+  // Remaining vote analysis
+  const remaining   = Math.max(0, totalEst - totalPR);
+  const rspShare    = votes['RSP']/totalPR;
+  const rspExpected = Math.round(remaining * rspShare);
+  const needed      = votesForNextSeat(qualifying);
+  const pctDone     = (totalPR/totalEst*100).toFixed(1);
+
+  // ── Update DOM ──
+  document.getElementById('rsp-total').textContent   = rspTotal;
+  document.getElementById('rsp-fptp-disp').textContent = rspFPTP;
+  document.getElementById('rsp-pr-disp').textContent   = rspPR;
+
+  const ssDom = document.getElementById('surplus-simple');
+  ssDom.textContent = (surplusSimple>=0?'+':'')+surplusSimple;
+  ssDom.className = 'big-num '+(surplusSimple>=0?'green-col':'danger-col');
+
+  const gsDom = document.getElementById('gap-super');
+  gsDom.textContent = (gapSuper>=0?'+':'')+gapSuper;
+  gsDom.className = 'big-num '+(gapSuper>=0?'green-col':'warn-col');
+
+  document.getElementById('super-status').textContent =
+    gapSuper>=0 ? '✅ RSP CAN amend constitution unilaterally!'
+                : Math.abs(gapSuper)+' seat(s) short of unilateral constitutional amendment';
+
+  const heroSuper = document.querySelector('.hero-card.warn');
+  heroSuper.className = 'hero-card '+(gapSuper>=0?'green glow-blue':'warn');
+  heroSuper.querySelector('::before'); // trigger repaint hack — use style
+  heroSuper.style.setProperty('--bar-color', gapSuper>=0?'var(--green)':'var(--warn)');
+
+  document.getElementById('pct-label').textContent = `${rspTotal} / ${HOUSE} = ${pct}%`;
+
+  // progress bar
+  const fillW = Math.min(100, rspTotal/HOUSE*100);
+  document.getElementById('progress-fill').style.width = fillW+'%';
+
+  // markers
+  const track = document.getElementById('progress-track');
+  track.querySelectorAll('.marker').forEach(m=>m.remove());
+  [[138,'SIMPLE\nMAJORITY','simple'],[184,'2/3\nSUPER','super']].forEach(([n,l,cls])=>{
+    const pct2 = n/HOUSE*100;
+    const m = document.createElement('div');
+    m.className = 'marker '+cls;
+    m.style.left = pct2+'%';
+    m.innerHTML = `<span class="marker-label">${n}</span><div class="marker-line"></div>`;
+    track.appendChild(m);
+  });
+
+  // PR stats
+  document.getElementById('pr-current-seats').textContent = rspPR;
+  document.getElementById('pr-votes-for-next').textContent = fmtNum(needed);
+  document.getElementById('next-seat-note').textContent = `to reach ${rspPR+1} PR seats`;
+  document.getElementById('pr-total-counted').textContent = fmt(totalPR);
+  document.getElementById('pr-turnout-pct').textContent = `~${pctDone}% of estimated total`;
+  document.getElementById('pr-remaining').textContent = fmt(remaining);
+  document.getElementById('rsp-expected-share').textContent = `RSP ~${(rspShare*100).toFixed(1)}% share expected`;
+  document.getElementById('pr-rsp-expected').textContent = '~'+fmt(rspExpected);
+  const verdict = rspExpected >= needed ? '⚡ Likely gets +1 PR seat' : '⚠️ May not get +1 seat';
+  document.getElementById('pr-verdict').textContent = verdict;
+
+  // breakdown
+  document.getElementById('b-fptp').textContent   = rspFPTP;
+  document.getElementById('b-pr').textContent     = rspPR;
+  document.getElementById('b-total').textContent  = rspTotal;
+  document.getElementById('b-pct').textContent    = pct+'%';
+  document.getElementById('b-surplus').textContent = (surplusSimple>=0?'+':'')+surplusSimple;
+  document.getElementById('b-deficit').textContent = (gapSuper>=0?'+':'')+gapSuper;
+
+  // thresholds
+  document.getElementById('t-govt').textContent  = surplusSimple;
+  document.getElementById('t-super').textContent = (gapSuper>=0?'+':'')+gapSuper;
+  const tsc = document.getElementById('t-super-cell');
+  tsc.innerHTML = gapSuper>=0
+    ? `✅ <span id="t-super">+${gapSuper}</span> — CAN amend!`
+    : `⚠️ <span id="t-super">${gapSuper}</span>`;
+  tsc.style.color = gapSuper>=0 ? 'var(--green)' : 'var(--warn)';
+  document.getElementById('t-tq').textContent = gapTQ;
+
+  // estimator
+  document.getElementById('e-counted').textContent     = fmt(totalPR);
+  document.getElementById('e-counted-raw').textContent = fmtNum(totalPR);
+  document.getElementById('e-total').textContent       = fmt(totalEst);
+  document.getElementById('e-remaining').textContent   = fmt(remaining);
+  document.getElementById('e-pct-done').textContent    = `~${pctDone}% counted`;
+  document.getElementById('e-rsp-pct').textContent     = (rspShare*100).toFixed(1)+'%';
+  document.getElementById('e-rsp-expected-votes').textContent = `~${fmtNum(rspExpected)} more RSP votes expected`;
+  document.getElementById('e-needed').textContent      = fmt(needed);
+  document.getElementById('e-verdict').textContent     = rspExpected >= needed
+    ? '🟢 Expected votes likely sufficient'
+    : '🔴 May not reach next seat threshold';
+
+  // party table
+  const tbody = document.getElementById('party-tbody');
+  tbody.innerHTML='';
+  const maxVotes = Math.max(...Object.values(votes));
+  const sortedParties = Object.entries(votes).sort((a,b)=>b[1]-a[1]);
+  sortedParties.forEach(([k,v])=>{
+    const pctV   = (v/totalPR*100).toFixed(2);
+    const color  = COLORS[k]||'#888';
+    const seats  = prSeats[k]||0;
+    const fptp   = FPTP_BASE[k]||0;
+    const tot    = seats+fptp;
+    const pass   = v>=threshold;
+    const barW   = (v/maxVotes*100).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="party-name-cell">
+        <span class="party-dot" style="background:${color}"></span>
+        ${PARTY_NAMES[k]||k}
+      </div></td>
+      <td style="font-family:'DM Mono',monospace">${fmtNum(v)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${color}">${pctV}%</td>
+      <td class="bar-cell">
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:${barW}%;background:${color}"></div>
+        </div>
+      </td>
+      <td style="font-weight:600;color:${color}">${seats}</td>
+      <td style="color:var(--muted)">${fptp}</td>
+      <td style="font-weight:700">${tot}</td>
+      <td><span class="threshold-status ${pass?'pass':'warn'}">${pass?'✓ PASS':'⚠ RISK'}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// init on load
+recalculate();
+</script>
+</body>
+</html>
