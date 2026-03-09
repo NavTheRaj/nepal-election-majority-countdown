@@ -543,16 +543,14 @@ const PARTY_MAP = {
 };
 
 const EC_URL = 'https://result.election.gov.np/Handlers/SecureJson.ashx?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt';
-const API_URL = 'https://api.allorigins.win/get?url=' + encodeURIComponent(EC_URL);
+const API_URL = 'http://localhost:3001/pr-votes';
 
 async function fetchLive() {
   setNotice('⏳', 'Fetching from Election Commission…', '#8ab4d0');
   try {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const wrapper = await res.json();
-    if (!wrapper.contents) throw new Error('Empty response from proxy');
-    const data = JSON.parse(wrapper.contents);
+    const data = await res.json();
     data.forEach(p => {
       const key = PARTY_MAP[p.PoliticalPartyName];
       const idMap = { RSP:'in-rsp-pr', NC:'in-nc-pr', UML:'in-uml-pr', NCP:'in-ncp-pr', Labor:'in-labor-pr', RPP:'in-rpp-pr' };
