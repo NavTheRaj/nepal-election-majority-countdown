@@ -550,7 +550,11 @@ async function fetchLive() {
   try {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const text = await res.text();
+    console.log('RAW RESPONSE:', text.substring(0, 300));
+    if (!text || text.trim() === '') throw new Error('Empty response from server');
+    if (text.trim()[0] !== '[' && text.trim()[0] !== '{') throw new Error('Not JSON — got: ' + text.substring(0, 100));
+    const data = JSON.parse(text);
     data.forEach(p => {
       const key = PARTY_MAP[p.PoliticalPartyName];
       const idMap = { RSP:'in-rsp-pr', NC:'in-nc-pr', UML:'in-uml-pr', NCP:'in-ncp-pr', Labor:'in-labor-pr', RPP:'in-rpp-pr' };
