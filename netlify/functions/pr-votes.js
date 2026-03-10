@@ -59,6 +59,11 @@ exports.handler = async function() {
     ]);
 
     console.log('PR status:', prRes.statusCode, '| FPTP status:', fptpRes.statusCode);
+    // Log first FPTP record field names to debug seat field name
+    try {
+      const fptpSample = JSON.parse(fptpRes.body);
+      if (fptpSample && fptpSample[0]) console.log('FPTP fields:', Object.keys(fptpSample[0]).join(', '));
+    } catch(e) { console.log('FPTP parse error:', e.message); }
 
     return {
       statusCode: 200,
