@@ -427,7 +427,7 @@ async function fetchLive(){
     let fptpDeclared=0;
     (payload.fptp||[]).forEach(p=>{
       const k=FPTP_PARTY_MAP[p.PoliticalPartyName];
-      const seats=+(p.TotalSeatWon||p.SeatWon||p.TotalSeats||p.WonSeat||p.Seats||p.seatWon||p.totalSeatWon||0);
+      const seats=+(p.TotWin||p.TotalSeatWon||p.SeatWon||p.TotalSeats||p.WonSeat||p.Seats||p.seatWon||p.totalSeatWon||0);
       if(k) fptpSeats[k]=seats;
       fptpDeclared+=seats;
     });
