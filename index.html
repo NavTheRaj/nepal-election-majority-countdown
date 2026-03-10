@@ -284,9 +284,14 @@
         <div class="ps-sub"><span class="ne">११० मध्ये</span><span class="en">out of 110</span></div>
       </div>
       <div class="pr-stat">
-        <div class="ps-num" style="font-size:22px" id="pr-votes-for-next">239,347</div>
-        <div class="ps-label"><span class="ne">+१ सिटका लागि PR मत</span><span class="en">PR Votes for +1 More Seat</span></div>
+        <div class="ps-num" style="font-size:22px" id="pr-votes-for-next">—</div>
+        <div class="ps-label"><span class="ne">+१ PR सिट (→ कुल <span id="pr-next1-total">—</span>)</span><span class="en">+1 PR seat (→ total <span id="pr-next1-total-en">—</span>)</span></div>
         <div class="ps-sub" id="next-seat-note"></div>
+      </div>
+      <div class="pr-stat">
+        <div class="ps-num" style="font-size:18px;color:var(--warn)" id="pr-votes-for-super">—</div>
+        <div class="ps-label"><span class="ne">सुपरमेजोरिटी (१८४) का लागि</span><span class="en">Votes for Supermajority (184)</span></div>
+        <div class="ps-sub" id="super-vote-note"></div>
       </div>
       <div class="pr-stat">
         <div class="ps-num" id="pr-total-counted">10.17M</div>
@@ -424,14 +429,15 @@ async function fetchLive(){
     const idMap={RSP:'in-rsp-pr',NC:'in-nc-pr',UML:'in-uml-pr',NCP:'in-ncp-pr',Labor:'in-labor-pr',RPP:'in-rpp-pr'};
     (payload.pr||[]).forEach(p=>{const k=PARTY_MAP[p.PoliticalPartyName];if(k&&idMap[k])document.getElementById(idMap[k]).value=p.TotalVoteReceived;});
     const fs={};
-    (payload.fptp||[]).forEach(p=>{const k=FPTP_MAP[p.PoliticalPartyName];if(k)fs[k]=(p.TotalSeatWon||0);});
+    (payload.fptp||[]).forEach(p=>{const k=FPTP_MAP[p.PoliticalPartyName];if(k)fs[k]=(p.TotalSeatWon||p.SeatWon||p.TotalSeats||p.WonSeat||p.Seats||0);});
     if(fs.RSP!==undefined)document.getElementById('in-rsp-fptp').value=fs.RSP;
     const summary=Object.entries(fs).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(' · ');
     const now=new Date().toLocaleTimeString();
     setNotice('✅',`लाइभ EC — ${now} | FPTP: ${summary||'लोड…'}`,`Live EC — ${now} | FPTP: ${summary||'loading…'}`,'var(--green)');
     recalculate();
   }catch(e){
-    setNotice('❌',`डेटा ल्याउन सकिएन (${e.message})`,`Fetch failed (${e.message})`,'var(--danger)');
+    setNotice('❌',`डेटा ल्याउन सकिएन (${e.message}) — पुरानो डेटा देखाइँदैछ`,`Fetch failed (${e.message}) — showing default data`,'var(--danger)');
+    recalculate();
   }
   resetCountdown();
 }
@@ -448,10 +454,14 @@ function sainteLague(votes,seats){
   }
   return alloc;
 }
-function votesForNextSeat(votes){
+function votesForNthExtraSeat(votes, n){
   const cur=sainteLague(votes,110).RSP;
-  let lo=0,hi=10000000;
-  while(lo<hi){const mid=(lo+hi)>>1;({...votes,RSP:votes.RSP+mid},sainteLague({...votes,RSP:votes.RSP+mid},110).RSP>cur)?hi=mid:lo=mid+1;}
+  let lo=0, hi=20000000;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    const test=Object.assign({},votes,{RSP:votes.RSP+mid});
+    sainteLague(test,110).RSP>=cur+n ? hi=mid : lo=mid+1;
+  }
   return lo;
 }
 
@@ -483,7 +493,7 @@ function recalculate(){
   const pct=(rspTotal/HOUSE*100).toFixed(1);
   const ss=rspTotal-138, gs=rspTotal-184, gtq=rspTotal-207;
   const rem=Math.max(0,totalEst-totalPR), share=v.RSP/totalPR;
-  const exp=Math.round(rem*share), needed=votesForNextSeat(q);
+  const exp=Math.round(rem*share);
   const pctDone=(totalPR/totalEst*100).toFixed(1);
 
   document.getElementById('rsp-total').textContent=rspTotal;
@@ -506,9 +516,20 @@ function recalculate(){
     const m=document.createElement('div');m.className='marker '+cls;m.style.left=(n/HOUSE*100)+'%';
     m.innerHTML=`<span class="marker-label">${l}</span><div class="marker-line"></div>`;track.appendChild(m);
   });
+  const needed1=votesForNthExtraSeat(q,1);
+  const needed2=votesForNthExtraSeat(q,2);
+  const total1=rspFPTP+rspPR+1, total2=rspFPTP+rspPR+2;
   document.getElementById('pr-current-seats').textContent=rspPR;
-  document.getElementById('pr-votes-for-next').textContent=fmtNum(needed);
-  document.getElementById('next-seat-note').innerHTML=`<span class="ne">${rspPR+1} PR सिट पुग्न</span><span class="en">to reach ${rspPR+1} PR seats</span>`;
+  document.getElementById('pr-votes-for-next').textContent=fmtNum(needed1);
+  document.getElementById('pr-next1-total').textContent=total1;
+  document.getElementById('pr-next1-total-en').textContent=total1;
+  document.getElementById('next-seat-note').innerHTML=total1>=184
+    ?'<span class="ne" style="color:var(--green)">✅ सुपरमेजोरिटी पुग्छ!</span><span class="en" style="color:var(--green)">✅ Reaches supermajority!</span>'
+    :`<span class="ne" style="color:var(--warn)">⚠ सुपरमेजोरिटीका लागि अझै ${184-total1} सिट कम</span><span class="en" style="color:var(--warn)">⚠ Still ${184-total1} short of supermajority</span>`;
+  document.getElementById('pr-votes-for-super').textContent=total2>=184?fmtNum(needed2):'N/A';
+  document.getElementById('super-vote-note').innerHTML=total2>=184
+    ?`<span class="ne">${fmtNum(needed2)} मतले ${total2} कुल → सुपरमेजोरिटी</span><span class="en">${fmtNum(needed2)} votes → ${total2} total = supermajority</span>`
+    :`<span class="ne">+२ PR सिटले पनि पुग्दैन</span><span class="en">+2 PR seats still not enough</span>`;
   document.getElementById('pr-total-counted').textContent=fmt(totalPR);
   document.getElementById('pr-turnout-pct').innerHTML=`<span class="ne">~${pctDone}% अनुमानित</span><span class="en">~${pctDone}% of estimated</span>`;
   document.getElementById('pr-remaining').textContent=fmt(rem);
@@ -535,7 +556,7 @@ function recalculate(){
   document.getElementById('e-pct-done').textContent=`~${pctDone}% counted`;
   document.getElementById('e-rsp-pct').textContent=(share*100).toFixed(1)+'%';
   document.getElementById('e-rsp-expected-votes').innerHTML=`<span class="ne">~${fmtNum(exp)} थप रास्वपा मत अपेक्षित</span><span class="en">~${fmtNum(exp)} more RSP votes expected</span>`;
-  document.getElementById('e-needed').textContent=fmt(needed);
+  document.getElementById('e-needed').textContent=fmt(needed1);
   document.getElementById('e-verdict').innerHTML=exp>=needed
     ?'<span class="ne">🟢 पर्याप्त मत अपेक्षित</span><span class="en">🟢 Expected votes likely sufficient</span>'
     :'<span class="ne">🔴 अर्को सिट नपुग्न सक्छ</span><span class="en">🔴 May not reach next seat threshold</span>';
@@ -581,7 +602,7 @@ function recalculate(){
   });
   applyLang(currentLang);
 }
-window.addEventListener('DOMContentLoaded',()=>{fetchLive();});
+window.addEventListener('DOMContentLoaded',()=>{recalculate();fetchLive();});
 </script>
 </body>
 </html>
